@@ -14,4 +14,9 @@ procedure from Nijhawan et al. (2012)
 4. For markers that lay between the two cutoffs were left uncalled and removed from further anaysis.
 5. Marks with log2 copy number ratios <= -1.28 were considered homozygous loss and genew with these copy numbers were also removed.
 
+## Lab Note by date
 
+#### 2017-09-18
+
+* organized ipynb file to python source code
+* implemented peak finding
