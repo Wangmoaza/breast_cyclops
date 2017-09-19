@@ -20,3 +20,8 @@ procedure from Nijhawan et al. (2012)
 
 * organized ipynb file to python source code
 * implemented peak finding
+
+##### 2017-09-19
+
+* working on determining 95% bounds
+* working on determining copy number neutral / loss
