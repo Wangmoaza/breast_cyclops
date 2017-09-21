@@ -148,6 +148,7 @@ def classify_loss(cnv_df):
         # FIXME If there are multiple peaks in the region, should select highest peak?
         # currently choose rightmost peak for peak_loss, leftmost peak for peak_neutral
         for peak in peak_indices:
+            print peak
             summit = smooth_hist.loc[peak[1], 'lower_bound'] 
             if -0.4 < summit and summit < -0.05:
                 peak_loss = peak
@@ -166,7 +167,7 @@ def classify_loss(cnv_df):
             cutoff_loss    = -0.4
             cutoff_neutral = - 0.2
         ### END - if else
-        
+	print "loss cutoff:", cutoff_loss, "neutral cutoff:", cutoff_neutral        
         # set loss_df according to cutoffs
         condition_loss    = (cutoff_homo < cnv_df[cell_line]) & (cnv_df[cell_line] < cutoff_loss)
         condition_neutral = cnv_df[cell_line] > cutoff_neutral
