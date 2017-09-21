@@ -52,7 +52,6 @@ def find_peak(values):
             upper_minima_idx = local_min[upper]
 
         except IndexError:
-            print "index error"
             lower -= 1
             lower_minima_idx = local_min[lower]
             upper_minima_idx = x.shape[0] - 1
@@ -68,34 +67,6 @@ def find_peak(values):
     return np.array(peaks)
 ### END - find_peak
 
-
-def _get95bound(smooth_hist, low_idx, high_idx, direction='upper'):
-    # FIXME What does 95% bounds mean? Possibly remove this
-    # 5% of counts in the peak range
-    target = smooth_hist.loc[low_idx:high_idx, 'count'].sum() * 0.05
-    subtotal = 0
-    cutoff = 0
-    a, b, d = 0, 0, 0
-    if direction == 'lower':
-        a, b, d = low_idx, high_idx + 1, 1
-
-    elif direction == 'upper':
-        a, b, d = high_idx, low_idx - 1, -1
-
-    else:
-        print "Error: Invalid direction."
-        return
-
-    for i in range(a, b, d):
-        subtotal += smooth_hist.loc[i, 'count']
-        if subtotal > target:
-            x1, x2 = smooth_hist.loc[i-1, 'lower_bound'], smooth_hist.loc[i, 'lower_bound']
-            y1, y2 = smooth_hist.loc[i-1, 'count'], smooth_hist[i, 'count']
-            cutoff = (x2 - x1)/(y2 - y1) * (target - y1) + x1
-            return cutoff
-        ### END - if
-    ### END - for i
-### END - _get95bound
 
 def get95bound(smooth_hist, low_idx, high_idx, direction='upper'):
     """ Calculate upper/lower 95% bounds for given distribution.
@@ -149,7 +120,7 @@ def get95bound(smooth_hist, low_idx, high_idx, direction='upper'):
     ### END - for i
 ### END - get95bound
 
-# FIXME needs correction check
+
 def classify_loss(cnv_df):
     # partial loss (1), homozygous loss (2), copy neutral (0), uncalled(NaN) info stored in loss_df
     loss_df = pd.DataFrame(data=np.nan, columns = cnv_df.columns, index=cnv_df.index)
@@ -203,11 +174,14 @@ def classify_loss(cnv_df):
     return loss_df
 ### END - classify_loss
 
+
 def main():
     cnv_df = pd.read_table('../CCLE_BR_lines_CNV.txt', sep='\t', header=0, index_col=0)
     cnv_df.columns = cnv_df.columns.str[:-7] # drop '_BREAST' part in cell_lines
     loss_df = classify_loss(cnv_df)
-    loss_df.to_csv('CCLE_BR_lines_loss.tsv', sep='\t')
+    loss_df.to_csv('../CCLE_BR_lines_loss.tsv', sep='\t')
+### END - main
+
 
 if __name__ == '__main__':
     main()
