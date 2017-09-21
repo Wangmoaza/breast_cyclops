@@ -81,6 +81,7 @@ def _get95bound(smooth_hist, low_idx, high_idx, direction='upper'):
     ### END - for i
 ### END - _get95bound
 
+# FIXME Needs correction check
 def get95bound(smooth_hist, low_idx, high_idx, direction='upper'):
     """ Calculate upper/lower 95% bounds for given distribution.
 
@@ -95,8 +96,8 @@ def get95bound(smooth_hist, low_idx, high_idx, direction='upper'):
     """
 
     # intergrate the counts in [low_idx, high_idx] using trapeziodal rule
-    target = np.trapz(smooth_hist[low_idx:high_idx, 'count'].values, 
-                      x=smooth_hist[low_idx:high_idx, 'lower_bound'].values) * 0.05
+    target = np.trapz(smooth_hist.loc[low_idx:high_idx, 'count'].values, 
+                      x=smooth_hist.loc[low_idx:high_idx, 'lower_bound'].values) * 0.05
     area = 0
     cutoff = 0
     a, b, d = 0, 0, 0
@@ -113,14 +114,17 @@ def get95bound(smooth_hist, low_idx, high_idx, direction='upper'):
     # FIXME Currently linear serach. Should change to binary search?
     # FIXME Need to check if this is correct...
     for i in range(a, b, d):
-        new_area = np.trapz(smooth_hist.loc[i:i+d, 'count'], smooth_hist.loc[i:i+d, 'lower_bound'])
+        if d > 0:
+            new_area = np.trapz(smooth_hist.loc[i:i+d, 'count'], smooth_hist.loc[i:i+d, 'lower_bound'])
+        else:
+            new_area = np.trapz(smooth_hist.loc[i+d:i, 'count'], smooth_hist.loc[i+d:i, 'lower_bound'])
         target -= new_area
         if target < 0:
             target += new_area
             x1, x2 = smooth_hist.loc[i, 'lower_bound'], smooth_hist.loc[i+d, 'lower_bound']
-            y1, y2 = smooth_hist.loc[i, 'count'], smooth_hist[i+d, 'count']
+            y1, y2 = smooth_hist.loc[i, 'count'], smooth_hist.loc[i+d, 'count']
             slope = float(y2-y1)/(x2-x1)
-            discriminant = np.sqrt(y1**2 + (2 * slope * target))
+            discriminant = np.sqrt(y1**2 + (2 * d * slope * target))
             cutoff = (-y1 + (slope * x1) - discriminant) / slope
             if cutoff < x1:
                 cutoff += 2 * (discriminant / slope)
@@ -131,18 +135,16 @@ def get95bound(smooth_hist, low_idx, high_idx, direction='upper'):
     ### END - for i
 ### END - get95bound
 
-
-def classify_loss(cnv_filepath):
-    cnv_df = pd.read_table(cnv_filepath, sep='\t', header=0, index_col=0)
+# FIXME needs correction check
+def classify_loss(cnv_df):
     # partial loss (1), homozygous loss (2), copy neutral (0), uncalled(NaN) info stored in loss_df
-    loss_df = pd.DataFrame(data=np.nan, columns = cnv_df.columns, index=cnv_df.index)
+    loss_df = pd.DataFrame(data=np.nan, columns = cnv_df.columns, index=cnv_df.index, dtype=np.int32)
     cutoff_homo = -1.28
 
     for cell_line in cnv_df.columns:
         hist, bin_edges = np.histogram(cnv_df[cell_line].values, bins=100)       
         sample_hist = pd.DataFrame(data=hist, index=bin_edges[:-1], columns=['count'])
-        # 5-bin moving average
-        smooth_hist = sample_hist.rolling(window=5).mean()
+        smooth_hist = sample_hist.rolling(window=5).mean() # 5-bin moving average
         smooth_hist = smooth_hist[smooth_hist['count'].notnull()] # remove NaNs
         smooth_hist.reset_index(inplace=True)
         smooth_hist.columns = ['lower_bound', 'count']
@@ -154,12 +156,14 @@ def classify_loss(cnv_filepath):
 
         # check if peaks are in desired ranges
         # FIXME If there are multiple peaks in the region, should select highest peak?
+        # currently choose rightmost peak for peak_loss, leftmost peak for peak_neutral
         for peak in peak_indices:
             summit = smooth_hist.loc[peak[1], 'lower_bound'] 
             if -0.4 < summit and summit < -0.05:
                 peak_loss = peak
             if -0.05 < summit and summit < 0.05:
                 peak_neutral = peak
+                break
         ### END - for peak
 
         # log2CN < cutoff_loss are considered copy loss
@@ -182,3 +186,13 @@ def classify_loss(cnv_filepath):
         loss_df.loc[cnv_df[condition_neutral].index, cell_line] = 0
     ### END - for cell_line
     return loss_df
+### END - classify_loss
+
+def main():
+    cnv_df = pd.read_table('../CCLE_BR_lines_CNV.txt', sep='\t', header=0, index_col=0)
+    cnv_df.columns = cnv_df.columns.str[:-7] # drop '_BREAST' part in cell_lines
+    loss_df = classify_loss(cnv_df)
+    loss_df.to_csv('CCLE_BR_lines_loss.tsv', sep='\t')
+
+if __name__ == '__main__':
+    main()
