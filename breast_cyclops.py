@@ -138,10 +138,11 @@ def get95bound(smooth_hist, low_idx, high_idx, direction='upper'):
 # FIXME needs correction check
 def classify_loss(cnv_df):
     # partial loss (1), homozygous loss (2), copy neutral (0), uncalled(NaN) info stored in loss_df
-    loss_df = pd.DataFrame(data=np.nan, columns = cnv_df.columns, index=cnv_df.index, dtype=np.int32)
+    loss_df = pd.DataFrame(data=np.nan, columns = cnv_df.columns, index=cnv_df.index)
     cutoff_homo = -1.28
 
     for cell_line in cnv_df.columns:
+        print cell_line, '...'
         hist, bin_edges = np.histogram(cnv_df[cell_line].values, bins=100)       
         sample_hist = pd.DataFrame(data=hist, index=bin_edges[:-1], columns=['count'])
         smooth_hist = sample_hist.rolling(window=5).mean() # 5-bin moving average
@@ -151,7 +152,7 @@ def classify_loss(cnv_df):
         counts = smooth_hist['count'].values
         
         peak_indices = find_peak(counts)
-        peak_loss, peak_neutral = np.nan, np.nan
+        peak_loss, peak_neutral = None, None
         cutoff_loss, cutoff_neutral = np.nan, np.nan
 
         # check if peaks are in desired ranges
@@ -169,7 +170,7 @@ def classify_loss(cnv_df):
         # log2CN < cutoff_loss are considered copy loss
         # log2CN > cutoff_neutral are considered copy neutral
         # loss peak and neutral peak are in desired ranges
-        if np.isfinite(peak_loss) and np.isfinite(peak_neutral):
+        if peak_loss is not None and peak_neutral is not None:
             cutoff_loss    = get95bound(smooth_hist, peak_loss[0], peak_loss[2], direction='upper')
             cutoff_neutral = get95bound(smooth_hist, peak_neutral[0], peak_neutral[2], direction='lower')
         else:
@@ -178,7 +179,7 @@ def classify_loss(cnv_df):
         ### END - if else
         
         # set loss_df according to cutoffs
-        condition_loss    = cutoff_homo < cnv_df[cell_line] and cnv_df[cell_line] < cutoff_loss
+        condition_loss    = (cutoff_homo < cnv_df[cell_line]) & (cnv_df[cell_line] < cutoff_loss)
         condition_neutral = cnv_df[cell_line] > cutoff_neutral
         condition_homo    = cnv_df[cell_line] <= cutoff_homo       
         loss_df.loc[cnv_df[condition_homo].index, cell_line]    = 2
