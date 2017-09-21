@@ -3,12 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import argrelextrema
 
-############ TODO ##############
-# 95% lowerbound upperbound
-#
-#
-################################
-
 def find_peak(values):
     """ Returns the indices of the boundaries of peaks. A peak is defined as
         local maxima where the height of the local maxima to its surrounding 
@@ -122,6 +116,16 @@ def get95bound(smooth_hist, low_idx, high_idx, direction='upper'):
 
 
 def classify_loss(cnv_df):
+    """ Classifies the given log2CN cnv datafreme to homozygous loss(2), partial loss(1), copy neutral(0),
+        and uncalled(NaN).
+
+        args:
+            cnv_df (pandas DataFrame) : values should be log2CN, columns cell lines, and rows genes
+
+        returns:
+            classified copy number loss results in the same shape of given cnv_df
+    """
+     
     # partial loss (1), homozygous loss (2), copy neutral (0), uncalled(NaN) info stored in loss_df
     loss_df = pd.DataFrame(data=np.nan, columns = cnv_df.columns, index=cnv_df.index)
     cutoff_homo = -1.28
