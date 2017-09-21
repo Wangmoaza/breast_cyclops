@@ -32,22 +32,38 @@ def find_peak(values):
     local_min = argrelextrema(x, np.less)
     local_min = local_min[0]
 
-    lower = 0
-    upper = 0
+    lower, upper = 0, 0
     peaks = []
+    lower_minima_idx, upper_minima_idx = -1, -1
     # FIXME height threshold of peak (global max - global min)/10
     height_threshold = (x.max() - x.min())/10
+
     # for each local maxima, if height of the local maxima to its surrounding local minima is
     # greater than (global max - global min)/10, consider it as a peak
     for maximum in local_max:
-        while local_min[lower] < maximum:
-            lower += 1
-        upper = lower
-        lower -= 1
-        while (upper < local_min.shape[0]) and (local_min[upper] < maximum):
-            upper += 1
-        if x[maximum] - min(x[local_min[lower]], x[local_min[upper]]) > height_threshold: 
-            peaks.append(np.array([local_min[lower], maximum, local_min[upper]]))
+        try:
+            while local_min[lower] < maximum:
+                lower += 1
+            upper = lower
+            lower -= 1
+            while (upper < local_min.shape[0]) and (local_min[upper] < maximum):
+                upper += 1 
+            lower_minima_idx = local_min[lower]
+            upper_minima_idx = local_min[upper]
+
+        except IndexError:
+            print "index error"
+            lower -= 1
+            lower_minima_idx = local_min[lower]
+            upper_minima_idx = x.shape[0] - 1
+        
+        if lower_minima_idx < 0 or upper_minima_idx < 0:
+            print "Error: indices should be > 0"
+            return
+        # FIXME height of peak > (global max - global min)/10            
+        if x[maximum] - min(x[lower_minima_idx], x[upper_minima_idx]) > height_threshold: 
+            peaks.append(np.array([lower_minima_idx, maximum, upper_minima_idx]))
+
     ### END - for maximum
     return np.array(peaks)
 ### END - find_peak
@@ -81,7 +97,6 @@ def _get95bound(smooth_hist, low_idx, high_idx, direction='upper'):
     ### END - for i
 ### END - _get95bound
 
-# FIXME Needs correction check
 def get95bound(smooth_hist, low_idx, high_idx, direction='upper'):
     """ Calculate upper/lower 95% bounds for given distribution.
 
@@ -98,8 +113,7 @@ def get95bound(smooth_hist, low_idx, high_idx, direction='upper'):
     # intergrate the counts in [low_idx, high_idx] using trapeziodal rule
     target = np.trapz(smooth_hist.loc[low_idx:high_idx, 'count'].values, 
                       x=smooth_hist.loc[low_idx:high_idx, 'lower_bound'].values) * 0.05
-    area = 0
-    cutoff = 0
+    area, cutoff = 0, 0
     a, b, d = 0, 0, 0
     if direction == 'lower':
         a, b, d = low_idx, high_idx + 1, 1
